@@ -85,19 +85,26 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <h1 className="text-3xl font-bold text-gray-900">커피 주문 시스템</h1>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/admin')}
-                className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
-              >
-                관리자
-              </button>
-              <span className="text-sm text-gray-600">{user?.email}</span>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 sm:py-6 gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">커피 주문 시스템</h1>
+            
+            {/* 모바일: 세로 배치, 데스크톱: 가로 배치 */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              {/* 사용자 정보 */}
+              <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4">
+                <span className="text-sm text-gray-600 truncate max-w-[200px]">{user?.email}</span>
+                <button
+                  onClick={() => router.push('/admin')}
+                  className="bg-purple-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-md hover:bg-purple-700 text-sm whitespace-nowrap"
+                >
+                  관리자
+                </button>
+              </div>
+              
+              {/* 로그아웃 버튼 */}
               <button
                 onClick={handleLogout}
-                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm w-full sm:w-auto"
               >
                 로그아웃
               </button>
