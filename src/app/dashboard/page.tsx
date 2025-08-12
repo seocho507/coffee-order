@@ -118,14 +118,15 @@ export default function Dashboard() {
           {/* 전체 주문 현황 */}
           <div className="bg-white overflow-hidden shadow rounded-lg mb-6">
             <div className="px-4 py-5 sm:p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">오늘의 전체 주문 현황</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">오늘의 전체 주문 현황</h2>
               <div className="text-sm text-gray-600 mb-4">
-                <p>전체 주문: {allOrderCount}잔</p>
+                <p className="text-orange-600 font-medium text-lg">전체 주문: {allOrderCount}잔 / 2잔</p>
                 <div className="mt-2 text-xs text-gray-500">
-                  <p>* 매일 오전 10시에 주문 내역이 초기화됩니다</p>
-                  <p>* 주문 가능 시간: 오전 10시~11시, 오후 1시~2시</p>
+                  <p className="text-lg">* 하루 최대 2잔의 주문을 각각 오전/오후 1잔씩 나누어 받습니다 (선착순)</p>
+                  <p className="text-lg">* 매일 오전 10시에 주문 내역이 초기화됩니다</p>
+                  <p className="text-lg mb-6">* 주문 가능 시간: 오전 10시~11시, 오후 1시~2시</p>
                   {!orderTimeAvailable && nextOrderTime && (
-                    <p className="text-orange-600 font-medium">
+                    <p className="text-orange-600 font-medium text-lg">
                       현재 주문 불가 시간입니다. {nextOrderTime}에 다시 시도해주세요.
                     </p>
                   )}
