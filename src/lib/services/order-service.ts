@@ -1,6 +1,12 @@
 import { supabaseAdmin } from '@/lib/supabase/config'
 import { DailyOrder, TimeSlot } from '@/types/coffee'
-import { ORDER_LIMITS, getTodayString, getCurrentTimeSlot } from '@/lib/utils/api-helpers'
+import { 
+  getTodayString, 
+  getCurrentTimeSlot, 
+  ERROR_MESSAGES,
+  validateOrderTime,
+  validateDailyOrderLimit 
+} from '@/lib/config/order-restrictions'
 import { CoffeeService } from './coffee-service'
 
 export class OrderService {
@@ -13,10 +19,12 @@ export class OrderService {
     const { userId, userName, coffeeId } = orderData
 
     // 현재 시간대 체크
-    const timeSlot = getCurrentTimeSlot()
-    if (!timeSlot) {
-      throw new Error('주문 가능한 시간이 아닙니다. (오전 10:00-11:00, 오후 13:00-14:00)')
+    const timeValidation = validateOrderTime()
+    if (!timeValidation.canOrder) {
+      throw new Error(timeValidation.reason!)
     }
+    
+    const timeSlot = getCurrentTimeSlot()!
 
     // 커피 주문 가능 여부 체크
     const { canOrder, reason } = await CoffeeService.canOrder(coffeeId)
@@ -26,14 +34,15 @@ export class OrderService {
 
     // 일일 주문 제한 체크
     const todayOrders = await this.getUserOrdersForDate(userId, getTodayString())
-    if (todayOrders.length >= ORDER_LIMITS.DAILY_LIMIT) {
-      throw new Error(`하루에 ${ORDER_LIMITS.DAILY_LIMIT}잔만 주문 가능합니다.`)
+    const dailyLimitValidation = validateDailyOrderLimit(todayOrders.length)
+    if (!dailyLimitValidation.canOrder) {
+      throw new Error(dailyLimitValidation.reason!)
     }
 
     // 커피 정보 가져오기
     const coffee = await CoffeeService.getCoffeeById(coffeeId)
     if (!coffee) {
-      throw new Error('커피 정보를 찾을 수 없습니다.')
+      throw new Error(ERROR_MESSAGES.COFFEE_NOT_FOUND)
     }
 
     // 주문 생성
@@ -75,7 +84,7 @@ export class OrderService {
       .single()
 
     if (fetchError || !order) {
-      throw new Error('주문을 찾을 수 없습니다.')
+      throw new Error(ERROR_MESSAGES.ORDER_NOT_FOUND)
     }
 
     // 주문 삭제
@@ -130,21 +139,16 @@ export class OrderService {
   // 주문 가능 여부 체크
   static async canUserOrder(userId: string): Promise<{ canOrder: boolean; reason?: string }> {
     // 시간대 체크
-    const timeSlot = getCurrentTimeSlot()
-    if (!timeSlot) {
-      return { 
-        canOrder: false, 
-        reason: '주문 가능한 시간이 아닙니다. (오전 10:00-11:00, 오후 13:00-14:00)' 
-      }
+    const timeValidation = validateOrderTime()
+    if (!timeValidation.canOrder) {
+      return timeValidation
     }
 
     // 일일 주문 제한 체크
     const todayOrders = await this.getUserOrdersForDate(userId, getTodayString())
-    if (todayOrders.length >= ORDER_LIMITS.DAILY_LIMIT) {
-      return { 
-        canOrder: false, 
-        reason: `하루에 ${ORDER_LIMITS.DAILY_LIMIT}잔만 주문 가능합니다.` 
-      }
+    const dailyLimitValidation = validateDailyOrderLimit(todayOrders.length)
+    if (!dailyLimitValidation.canOrder) {
+      return dailyLimitValidation
     }
 
     return { canOrder: true }

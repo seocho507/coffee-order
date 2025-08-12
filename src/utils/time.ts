@@ -1,26 +1,8 @@
-import { TIME_SLOTS } from '@/lib/utils/api-helpers'
-
-export function isOrderTimeAvailable(): boolean {
-  const now = new Date()
-  const currentHour = now.getHours()
-  
-  return (currentHour >= TIME_SLOTS.morning.start && currentHour < TIME_SLOTS.morning.end) || 
-         (currentHour >= TIME_SLOTS.afternoon.start && currentHour < TIME_SLOTS.afternoon.end)
-}
-
-export function getNextOrderTime(): string {
-  const now = new Date()
-  const currentHour = now.getHours()
-  
-  if (currentHour < TIME_SLOTS.morning.start) {
-    return "오전 10시"
-  } else if (currentHour >= TIME_SLOTS.morning.end && currentHour < TIME_SLOTS.afternoon.start) {
-    return "오후 1시"
-  } else if (currentHour >= TIME_SLOTS.afternoon.end) {
-    return "내일 오전 10시"
-  }
-  return ""
-}
+// 통합 order-restrictions 파일의 함수들을 재내보내기
+export { 
+  isOrderTimeAvailable, 
+  getNextOrderTime 
+} from '@/lib/config/order-restrictions'
 
 export function formatOrderTime(createdAt: string): string {
   return new Date(createdAt).toLocaleString('ko-KR', {

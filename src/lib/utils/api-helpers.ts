@@ -56,28 +56,10 @@ export function getDateString(date: Date): string {
   return date.toISOString().split('T')[0]
 }
 
-// 시간대 검증
-export function getCurrentTimeSlot(): 'morning' | 'afternoon' | null {
-  const now = new Date()
-  const hour = now.getHours()
-  
-  if (hour >= 10 && hour < 11) {
-    return 'morning'
-  } else if (hour >= 13 && hour < 14) {
-    return 'afternoon'
-  }
-  
-  return null
-}
-
-// 주문 제한 상수
-export const ORDER_LIMITS = {
-  DAILY_LIMIT: 1,
-  GRAMS_PER_CUP: 20,
-  MIN_GRAMS_REQUIRED: 20
-} as const
-
-export const TIME_SLOTS = {
-  morning: { start: 10, end: 11, label: '오전 (10:00-11:00)' },
-  afternoon: { start: 13, end: 14, label: '오후 (13:00-14:00)' }
-} as const
+// 주문 제한 관련 함수들은 order-restrictions로 이동됨
+// 하위 호환성을 위해 재내보내기
+export { 
+  getCurrentTimeSlot,
+  ORDER_LIMITS,
+  TIME_SLOTS 
+} from '@/lib/config/order-restrictions'

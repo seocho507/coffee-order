@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/config'
 import { Coffee } from '@/types/coffee'
-import { ORDER_LIMITS } from '@/lib/utils/api-helpers'
+import { QUANTITY_RESTRICTIONS, validateStock, ERROR_MESSAGES } from '@/lib/config/order-restrictions'
 
 export class CoffeeService {
   // 모든 커피 조회
@@ -122,10 +122,10 @@ export class CoffeeService {
   }
 
   // 재고 차감
-  static async decreaseStock(id: string, grams: number = ORDER_LIMITS.GRAMS_PER_CUP): Promise<void> {
+  static async decreaseStock(id: string, grams: number = QUANTITY_RESTRICTIONS.GRAMS_PER_CUP): Promise<void> {
     const coffee = await this.getCoffeeById(id)
     if (!coffee) {
-      throw new Error('커피를 찾을 수 없습니다.')
+      throw new Error(ERROR_MESSAGES.COFFEE_NOT_FOUND)
     }
 
     await this.updateCoffee(id, {
@@ -134,10 +134,10 @@ export class CoffeeService {
   }
 
   // 재고 복구
-  static async restoreStock(id: string, grams: number = ORDER_LIMITS.GRAMS_PER_CUP): Promise<void> {
+  static async restoreStock(id: string, grams: number = QUANTITY_RESTRICTIONS.GRAMS_PER_CUP): Promise<void> {
     const coffee = await this.getCoffeeById(id)
     if (!coffee) {
-      throw new Error('커피를 찾을 수 없습니다.')
+      throw new Error(ERROR_MESSAGES.COFFEE_NOT_FOUND)
     }
 
     await this.updateCoffee(id, {
@@ -150,15 +150,17 @@ export class CoffeeService {
     const coffee = await this.getCoffeeById(id)
     
     if (!coffee) {
-      return { canOrder: false, reason: '커피를 찾을 수 없습니다.' }
+      return { canOrder: false, reason: ERROR_MESSAGES.COFFEE_NOT_FOUND }
     }
 
     if (!coffee.available) {
       return { canOrder: false, reason: '현재 주문할 수 없는 커피입니다.' }
     }
 
-    if (coffee.remainingGrams < ORDER_LIMITS.MIN_GRAMS_REQUIRED) {
-      return { canOrder: false, reason: '커피 재고가 부족합니다.' }
+    // 재고 검증 함수 사용
+    const stockValidation = validateStock(coffee.remainingGrams)
+    if (!stockValidation.canOrder) {
+      return stockValidation
     }
 
     return { canOrder: true }
