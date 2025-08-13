@@ -7,6 +7,7 @@ import { useOrders } from '@/hooks/useOrders'
 import {
   getNextOrderTime,
   isOrderTimeAvailable,
+  getCurrentTimeSlot,
   QUANTITY_RESTRICTIONS,
   validateDailyOrderLimit
 } from '@/lib/config/order-restrictions'
@@ -69,16 +70,27 @@ export default function Dashboard() {
     }, [signOut, router])
 
     // 계산된 값들 (메모이제이션으로 최적화)
-    const { remainingOrders, orderTimeAvailable, nextOrderTime } = useMemo(() => {
-        const userCount = userOrders?.length || 0
-        const remaining = Math.max(0, QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT - userCount)
+    const { remainingOrders, orderTimeAvailable, nextOrderTime, canUserOrderInCurrentSlot } = useMemo(() => {
         const timeAvailable = isOrderTimeAvailable()
         const nextTime = getNextOrderTime()
+        const currentTimeSlot = getCurrentTimeSlot()
+        
+        // 사용자의 일일 주문 잔여량 (전체)
+        const userCount = userOrders?.length || 0
+        const dailyRemaining = Math.max(0, QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT - userCount)
+        
+        // 현재 시간대에 사용자가 이미 주문했는지 확인
+        let canOrderInCurrentSlot = true
+        if (currentTimeSlot && userOrders) {
+            const currentSlotOrders = userOrders.filter(order => order.timeSlot === currentTimeSlot)
+            canOrderInCurrentSlot = currentSlotOrders.length === 0 // 현재 시간대에 주문 없으면 가능
+        }
         
         return {
-            remainingOrders: remaining,
+            remainingOrders: dailyRemaining,
             orderTimeAvailable: timeAvailable,
-            nextOrderTime: nextTime
+            nextOrderTime: nextTime,
+            canUserOrderInCurrentSlot: canOrderInCurrentSlot && timeAvailable
         }
     }, [userOrders])
 
@@ -149,6 +161,7 @@ export default function Dashboard() {
                             remainingOrders={remainingOrders}
                             orderTimeAvailable={orderTimeAvailable}
                             nextOrderTime={nextOrderTime}
+                            canUserOrderInCurrentSlot={canUserOrderInCurrentSlot}
                             onOrder={handleOrder}
                             isCreatingOrder={isCreatingOrder}
                         />

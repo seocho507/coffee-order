@@ -83,11 +83,11 @@ export function getNextOrderTime(): string {
   const currentHour = koreaTime.getHours()
   
   if (currentHour < TIME_SLOTS.morning.start) {
-    return `오전 ${TIME_RESTRICTIONS.MORNING_SLOT.START_HOUR}시`
+    return `${TIME_RESTRICTIONS.MORNING_SLOT.START_HOUR}시`
   } else if (currentHour >= TIME_SLOTS.morning.end && currentHour < TIME_SLOTS.afternoon.start) {
-    return `오후 ${TIME_RESTRICTIONS.AFTERNOON_SLOT.START_HOUR}시`
+    return `${TIME_RESTRICTIONS.AFTERNOON_SLOT.START_HOUR}시`
   } else if (currentHour >= TIME_SLOTS.afternoon.end) {
-    return `내일 오전 ${TIME_RESTRICTIONS.MORNING_SLOT.START_HOUR}시`
+    return `내일 ${TIME_RESTRICTIONS.MORNING_SLOT.START_HOUR}시`
   }
   
   return "현재 주문 가능"
