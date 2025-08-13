@@ -19,10 +19,10 @@ export const TIME_RESTRICTIONS = {
 
 // 수량 제한 설정
 export const QUANTITY_RESTRICTIONS = {
-  DAILY_ORDER_LIMIT: 2,          // 하루 최대 주문 가능 잔 수 (오전 1잔 + 오후 1잔)
+  DAILY_ORDER_LIMIT: 1,          // 개인별 하루 최대 주문 가능 잔 수
   GRAMS_PER_CUP: 20,             // 커피 1잔당 원두 소모량 (그램)
   MIN_GRAMS_REQUIRED: 20,        // 주문을 위한 최소 원두 필요량
-  MAX_ORDER_PER_TIMESLOT: 1      // 시간대별 최대 주문 가능 잔 수
+  MAX_ORDER_PER_TIMESLOT: 1      // 전체 시간대별 최대 주문 가능 잔 수 (선착순)
 } as const
 
 // 시간 슬롯 타입
@@ -152,13 +152,13 @@ export function validateTimeslotOrderLimit(currentTimeslotOrderCount: number): O
 // 사용자 정의 메시지
 export const USER_MESSAGES = {
   ORDER_RULES: [
-    `* 하루 최대 ${QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT}잔의 주문을 각각 오전/오후 ${QUANTITY_RESTRICTIONS.MAX_ORDER_PER_TIMESLOT}잔씩 나누어 받습니다 (선착순)`,
+    `* 하루에 개인당 최대 ${QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT}잔, 각 시간대별로 ${QUANTITY_RESTRICTIONS.MAX_ORDER_PER_TIMESLOT}잔씩 제공됩니다 (선착순)`,
     `* 매일 오전 ${TIME_RESTRICTIONS.MORNING_SLOT.START_HOUR}시에 주문 내역이 초기화됩니다`,
     `* 주문 가능 시간: 오전 ${TIME_RESTRICTIONS.MORNING_SLOT.START_HOUR}시~${TIME_RESTRICTIONS.MORNING_SLOT.END_HOUR}시, 오후 ${TIME_RESTRICTIONS.AFTERNOON_SLOT.START_HOUR}시~${TIME_RESTRICTIONS.AFTERNOON_SLOT.END_HOUR}시`
   ],
   ORDER_LIMIT_INFO: (userOrderCount: number, remainingOrders: number) => ({
     current: `오늘 내가 주문한 커피: ${userOrderCount}잔`,
-    remaining: `남은 주문 가능량: ${remainingOrders}잔 (일일 ${QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT}잔 제한)`
+    remaining: `남은 주문 가능량: ${remainingOrders}잔 (개인별 일일 ${QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT}잔 제한)`
   })
 } as const
 
