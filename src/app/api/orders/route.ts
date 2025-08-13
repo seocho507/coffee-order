@@ -7,6 +7,7 @@ import {
   validateRequiredFields,
   getTodayString 
 } from '@/lib/utils/api-helpers'
+import { withOrderCreationDeduplication } from '@/lib/middleware/request-deduplication'
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,11 +34,15 @@ export async function POST(request: NextRequest) {
       return errorResponse('유효한 커피 ID를 입력해주세요.')
     }
 
-    const order = await OrderService.createOrder({
-      userId: userId.trim(),
-      userName: userName.trim(),
-      coffeeId: coffeeId.trim()
-    })
+    // 중복 요청 방지 래퍼로 주문 생성
+    const order = await withOrderCreationDeduplication(
+      userId.trim(),
+      () => OrderService.createOrder({
+        userId: userId.trim(),
+        userName: userName.trim(),
+        coffeeId: coffeeId.trim()
+      })
+    )
 
     return successResponse({ order }, '주문이 성공적으로 생성되었습니다.')
 

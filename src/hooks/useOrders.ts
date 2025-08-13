@@ -6,6 +6,8 @@ export function useOrders(userId?: string, all: boolean = false) {
   const [orders, setOrders] = useState<DailyOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false)
+  const [isDeletingOrder, setIsDeletingOrder] = useState<string | null>(null)
 
   const loadOrders = useCallback(async () => {
     try {
@@ -39,11 +41,20 @@ export function useOrders(userId?: string, all: boolean = false) {
       return false
     }
 
+    // 중복 요청 방지
+    if (isCreatingOrder) {
+      toast.error('주문 처리 중입니다. 잠시만 기다려주세요.')
+      return false
+    }
+
     try {
+      setIsCreatingOrder(true)
+      
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-user-id': userId,
         },
         body: JSON.stringify({
           userId,
@@ -66,13 +77,26 @@ export function useOrders(userId?: string, all: boolean = false) {
       const errorMessage = err instanceof Error ? err.message : '주문 중 오류가 발생했습니다.'
       toast.error(errorMessage)
       return false
+    } finally {
+      setIsCreatingOrder(false)
     }
   }
 
   const deleteOrder = async (orderId: string) => {
+    // 중복 요청 방지
+    if (isDeletingOrder === orderId) {
+      toast.error('삭제 처리 중입니다. 잠시만 기다려주세요.')
+      return false
+    }
+
     try {
+      setIsDeletingOrder(orderId)
+      
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'DELETE',
+        headers: {
+          'x-user-id': userId || 'anonymous',
+        },
       })
 
       const data = await response.json()
@@ -89,6 +113,8 @@ export function useOrders(userId?: string, all: boolean = false) {
       const errorMessage = err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다.'
       toast.error(errorMessage)
       return false
+    } finally {
+      setIsDeletingOrder(null)
     }
   }
 
@@ -102,6 +128,8 @@ export function useOrders(userId?: string, all: boolean = false) {
     orders,
     loading,
     error,
+    isCreatingOrder,
+    isDeletingOrder,
     refetch: loadOrders,
     createOrder,
     deleteOrder

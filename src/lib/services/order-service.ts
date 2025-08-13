@@ -5,7 +5,8 @@ import {
   getCurrentTimeSlot, 
   ERROR_MESSAGES,
   validateOrderTime,
-  validateDailyOrderLimit 
+  validateDailyOrderLimit,
+  validateTimeslotOrderLimit
 } from '@/lib/config/order-restrictions'
 import { CoffeeService } from './coffee-service'
 
@@ -39,13 +40,20 @@ export class OrderService {
       throw new Error(dailyLimitValidation.reason!)
     }
 
+    // 시간대별 주문 제한 체크
+    const timeslotOrders = await this.getTimeslotOrdersForDate(getTodayString(), timeSlot)
+    const timeslotLimitValidation = validateTimeslotOrderLimit(timeslotOrders.length)
+    if (!timeslotLimitValidation.canOrder) {
+      throw new Error(timeslotLimitValidation.reason!)
+    }
+
     // 커피 정보 가져오기
     const coffee = await CoffeeService.getCoffeeById(coffeeId)
     if (!coffee) {
       throw new Error(ERROR_MESSAGES.COFFEE_NOT_FOUND)
     }
 
-    // 주문 생성
+    // 주문 생성 (유니크 제약조건으로 중복 방지)
     const { data, error } = await supabaseAdmin
       .from('daily_orders')
       .insert([{
@@ -60,6 +68,10 @@ export class OrderService {
       .single()
 
     if (error) {
+      // 중복 주문 시도 시 특별한 에러 메시지
+      if (error.code === '23505' || error.message.includes('duplicate') || error.message.includes('unique')) {
+        throw new Error('이미 해당 시간대에 주문하셨습니다.')
+      }
       throw new Error(`주문 생성 실패: ${error.message}`)
     }
 
@@ -136,6 +148,22 @@ export class OrderService {
     return data?.map(this.formatOrder) || []
   }
 
+  // 특정 날짜의 특정 시간대 주문 조회
+  static async getTimeslotOrdersForDate(date: string, timeSlot: TimeSlot): Promise<DailyOrder[]> {
+    const { data, error } = await supabaseAdmin
+      .from('daily_orders')
+      .select('*')
+      .eq('order_date', date)
+      .eq('time_slot', timeSlot)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      throw new Error(`주문 조회 실패: ${error.message}`)
+    }
+
+    return data?.map(this.formatOrder) || []
+  }
+
   // 주문 가능 여부 체크
   static async canUserOrder(userId: string): Promise<{ canOrder: boolean; reason?: string }> {
     // 시간대 체크
@@ -144,11 +172,20 @@ export class OrderService {
       return timeValidation
     }
 
+    const timeSlot = getCurrentTimeSlot()!
+
     // 일일 주문 제한 체크
     const todayOrders = await this.getUserOrdersForDate(userId, getTodayString())
     const dailyLimitValidation = validateDailyOrderLimit(todayOrders.length)
     if (!dailyLimitValidation.canOrder) {
       return dailyLimitValidation
+    }
+
+    // 시간대별 주문 제한 체크
+    const timeslotOrders = await this.getTimeslotOrdersForDate(getTodayString(), timeSlot)
+    const timeslotLimitValidation = validateTimeslotOrderLimit(timeslotOrders.length)
+    if (!timeslotLimitValidation.canOrder) {
+      return timeslotLimitValidation
     }
 
     return { canOrder: true }

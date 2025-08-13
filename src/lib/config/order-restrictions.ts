@@ -137,6 +137,18 @@ export function validateStock(remainingGrams: number): OrderValidationResult {
   return { canOrder: true }
 }
 
+// 시간대별 주문 수량 검증
+export function validateTimeslotOrderLimit(currentTimeslotOrderCount: number): OrderValidationResult {
+  if (currentTimeslotOrderCount >= QUANTITY_RESTRICTIONS.MAX_ORDER_PER_TIMESLOT) {
+    return {
+      canOrder: false,
+      reason: `현재 시간대 주문이 마감되었습니다. (최대 ${QUANTITY_RESTRICTIONS.MAX_ORDER_PER_TIMESLOT}잔)`
+    }
+  }
+  
+  return { canOrder: true }
+}
+
 // 사용자 정의 메시지
 export const USER_MESSAGES = {
   ORDER_RULES: [
