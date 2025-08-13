@@ -54,7 +54,8 @@ export const ERROR_MESSAGES = {
 // 시간 검증 함수
 export function getCurrentTimeSlot(): TimeSlot | null {
   const now = new Date()
-  const hour = now.getHours()
+  const koreaTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Seoul"}))
+  const hour = koreaTime.getHours()
   
   if (hour >= TIME_SLOTS.morning.start && hour < TIME_SLOTS.morning.end) {
     return 'morning'
@@ -68,7 +69,8 @@ export function getCurrentTimeSlot(): TimeSlot | null {
 // 주문 가능 시간 체크
 export function isOrderTimeAvailable(): boolean {
   const now = new Date()
-  const currentHour = now.getHours()
+  const koreaTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Seoul"}))
+  const currentHour = koreaTime.getHours()
   
   return (currentHour >= TIME_SLOTS.morning.start && currentHour < TIME_SLOTS.morning.end) || 
          (currentHour >= TIME_SLOTS.afternoon.start && currentHour < TIME_SLOTS.afternoon.end)
@@ -77,7 +79,8 @@ export function isOrderTimeAvailable(): boolean {
 // 다음 주문 가능 시간 계산
 export function getNextOrderTime(): string {
   const now = new Date()
-  const currentHour = now.getHours()
+  const koreaTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Seoul"}))
+  const currentHour = koreaTime.getHours()
   
   if (currentHour < TIME_SLOTS.morning.start) {
     return `오전 ${TIME_RESTRICTIONS.MORNING_SLOT.START_HOUR}시`
@@ -153,9 +156,12 @@ export const DAILY_ORDER_LIMIT = QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT
 
 // 날짜 유틸리티
 export function getTodayString(): string {
-  return new Date().toISOString().split('T')[0]
+  const now = new Date()
+  const koreaTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Seoul"}))
+  return koreaTime.toISOString().split('T')[0]
 }
 
 export function getDateString(date: Date): string {
-  return date.toISOString().split('T')[0]
+  const koreaTime = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Seoul"}))
+  return koreaTime.toISOString().split('T')[0]
 }
