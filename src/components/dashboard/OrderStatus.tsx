@@ -30,14 +30,6 @@ export default function OrderStatus({
               {USER_MESSAGES.ORDER_RULES.map((rule, index) => (
                 <p key={index} className="text-lg mb-1">{rule}</p>
               ))}
-              <div className="mt-4">
-                <p className={`font-medium text-lg ${orderStatus.morningAvailable ? 'text-green-600' : 'text-red-600'}`}>
-                  오전 주문: {orderStatus.morningAvailable ? '가능' : '마감'}
-                </p>
-                <p className={`font-medium text-lg ${orderStatus.afternoonAvailable ? 'text-green-600' : 'text-red-600'}`}>
-                  오후 주문: {orderStatus.afternoonAvailable ? '가능' : '마감'}
-                </p>
-              </div>
             </div>
           </div>
 
