@@ -1,28 +1,33 @@
 'use client'
 
-import {useRouter} from 'next/navigation'
-import {useAuth} from '@/hooks/useAuth'
-import {useCoffees} from '@/hooks/useCoffees'
-import {useOrders} from '@/hooks/useOrders'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
+import { useCoffees } from '@/hooks/useCoffees'
+import { useOrders } from '@/hooks/useOrders'
 import {
   getNextOrderTime,
   isOrderTimeAvailable,
   QUANTITY_RESTRICTIONS,
-  USER_MESSAGES,
   validateDailyOrderLimit
 } from '@/lib/config/order-restrictions'
-import {Coffee} from '@/types/coffee'
+import { Coffee } from '@/types/coffee'
 import toast from 'react-hot-toast'
+import { Suspense, lazy, useMemo, useCallback } from 'react'
+
+// 컴포넌트들을 동적 import로 코드 분할
+const OrderStatus = lazy(() => import('@/components/dashboard/OrderStatus'))
+const CoffeeMenu = lazy(() => import('@/components/dashboard/CoffeeMenu'))
 
 export default function Dashboard() {
     const router = useRouter()
-    const {user, loading: authLoading, signOut} = useAuth()
-    const {coffees, loading: coffeesLoading, refetch: refetchCoffees} = useCoffees()
+    const { user, loading: authLoading, signOut } = useAuth()
+    const { coffees, loading: coffeesLoading, refetch: refetchCoffees } = useCoffees()
     const {
         orders: userOrders,
         loading: ordersLoading,
         createOrder,
-        refetch: refetchOrders
+        refetch: refetchOrders,
+        isCreatingOrder
     } = useOrders(user?.id)
 
     const {
@@ -31,16 +36,8 @@ export default function Dashboard() {
         refetch: refetchAllOrders
     } = useOrders(undefined, true)
 
-    const isLoading = authLoading || coffeesLoading || ordersLoading || allOrdersLoading
-
-    // 인증되지 않은 사용자 리다이렉트
-    if (!authLoading && !user) {
-        router.push('/')
-        return null
-    }
-
-    // 주문 처리 함수
-    const handleOrder = async (coffee: Coffee) => {
+    // 주문 처리 함수 (메모이제이션)
+    const handleOrder = useCallback(async (coffee: Coffee) => {
         if (!user) return
 
         if (!isOrderTimeAvailable()) {
@@ -63,12 +60,34 @@ export default function Dashboard() {
             refetchAllOrders()
             refetchCoffees()
         }
-    }
+    }, [user, userOrders, createOrder, refetchOrders, refetchAllOrders, refetchCoffees])
 
-    // 로그아웃 처리
-    const handleLogout = () => {
+    // 로그아웃 처리 (메모이제이션)
+    const handleLogout = useCallback(() => {
         signOut()
         router.push('/')
+    }, [signOut, router])
+
+    // 계산된 값들 (메모이제이션으로 최적화)
+    const { remainingOrders, orderTimeAvailable, nextOrderTime } = useMemo(() => {
+        const userCount = userOrders?.length || 0
+        const remaining = Math.max(0, QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT - userCount)
+        const timeAvailable = isOrderTimeAvailable()
+        const nextTime = getNextOrderTime()
+        
+        return {
+            remainingOrders: remaining,
+            orderTimeAvailable: timeAvailable,
+            nextOrderTime: nextTime
+        }
+    }, [userOrders])
+
+    const isLoading = authLoading || coffeesLoading || ordersLoading || allOrdersLoading
+
+    // 인증되지 않은 사용자 리다이렉트
+    if (!authLoading && !user) {
+        router.push('/')
+        return null
     }
 
     // 로딩 상태
@@ -79,16 +98,6 @@ export default function Dashboard() {
             </div>
         )
     }
-
-    // 계산된 값들 (안전한 기본값 제공)
-    const userOrderCount = userOrders?.length || 0
-    const allOrderCount = allOrders?.length || 0
-    const remainingOrders = Math.max(0, QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT - userOrderCount)
-    const orderTimeAvailable = isOrderTimeAvailable()
-    const nextOrderTime = getNextOrderTime()
-
-    // 전체 주문 제한 계산 (시간대별 제한 고려)
-    const totalDailyLimit = QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT * 2 // 오전 + 오후
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -124,119 +133,26 @@ export default function Dashboard() {
 
             <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 <div className="px-4 py-6 sm:px-0">
-                    {/* 전체 주문 현황 */}
-                    <div className="bg-white overflow-hidden shadow rounded-lg mb-6">
-                        <div className="px-4 py-5 sm:p-6">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">오늘의 전체 주문 현황</h2>
-                            <div className="text-sm text-gray-600 mb-4">
-                                <p className="text-orange-600 font-medium text-lg">
-                                    전체 주문: {allOrderCount}잔 / {totalDailyLimit}잔
-                                </p>
-                                <div className="mt-2 text-xs text-gray-500">
-                                    {USER_MESSAGES.ORDER_RULES.map((rule, index) => (
-                                        <p key={index} className="text-lg mb-1">{rule}</p>
-                                    ))}
-                                    {!orderTimeAvailable && nextOrderTime && (
-                                        <p className="text-orange-600 font-medium text-lg mt-4">
-                                            현재 주문 불가 시간입니다. {nextOrderTime}에 다시 시도해주세요.
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
+                    <Suspense fallback={<div className="text-center py-8">로딩 중...</div>}>
+                        <OrderStatus 
+                            userOrders={userOrders || []}
+                            allOrders={allOrders || []}
+                            isOrderTimeAvailable={orderTimeAvailable}
+                            nextOrderTime={nextOrderTime}
+                        />
+                    </Suspense>
 
-                            {allOrders && allOrders.length > 0 && (
-                                <div className="mt-4">
-                                    <h3 className="text-md font-medium text-gray-900 mb-2">전체 주문 내역</h3>
-                                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                                        {allOrders
-                                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                            .map((order) => (
-                                                <div key={order.id}
-                                                     className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                                                    <div className="text-sm">
-                                                        <span className="font-medium">{order.coffeeName}</span>
-                                                        <span className="text-gray-600 ml-2">- {order.userName}</span>
-                                                    </div>
-                                                    <div className="text-xs text-gray-500">
-                                                        {new Date(order.createdAt).toLocaleTimeString()}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 개인 주문 현황 */}
-                    <div className="bg-white overflow-hidden shadow rounded-lg mb-6">
-                        <div className="px-4 py-5 sm:p-6">
-                            <h2 className="text-lg font-medium text-gray-900 mb-4">나의 주문 현황</h2>
-                            <div className="text-sm text-gray-600">
-                                {(() => {
-                                    const orderInfo = USER_MESSAGES.ORDER_LIMIT_INFO(userOrderCount, remainingOrders)
-                                    return (
-                                        <>
-                                            <p>{orderInfo.current}</p>
-                                            <p>{orderInfo.remaining}</p>
-                                        </>
-                                    )
-                                })()}
-                            </div>
-
-                            {userOrders && userOrders.length > 0 && (
-                                <div className="mt-4">
-                                    <h3 className="text-md font-medium text-gray-900 mb-2">내 주문 내역</h3>
-                                    <ul className="space-y-2">
-                                        {userOrders.map((order) => (
-                                            <li key={order.id} className="text-sm text-gray-600">
-                                                {order.coffeeName} - {new Date(order.createdAt).toLocaleTimeString()}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 커피 메뉴 */}
-                    <div className="bg-white overflow-hidden shadow rounded-lg">
-                        <div className="px-4 py-5 sm:p-6">
-                            <h2 className="text-lg font-medium text-gray-900 mb-4">커피 메뉴</h2>
-
-                            {coffeesLoading ? (
-                                <div className="text-center py-8">
-                                    <div className="text-lg">커피 메뉴 로딩 중...</div>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {coffees?.map((coffee) => (
-                                        <div key={coffee.id} className="border rounded-lg p-4">
-                                            <h3 className="font-medium text-gray-900">{coffee.name}</h3>
-                                            <p className="text-sm text-gray-600">₩{coffee.price.toLocaleString()}</p>
-                                            <p className="text-sm text-gray-500">남은 용량: {coffee.remainingGrams}g</p>
-                                            <button
-                                                onClick={() => handleOrder(coffee)}
-                                                disabled={!coffee.available || coffee.remainingGrams < QUANTITY_RESTRICTIONS.MIN_GRAMS_REQUIRED || remainingOrders <= 0 || !orderTimeAvailable}
-                                                className="mt-2 w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                {!coffee.available
-                                                    ? '품절'
-                                                    : coffee.remainingGrams < QUANTITY_RESTRICTIONS.MIN_GRAMS_REQUIRED
-                                                        ? '재고 부족'
-                                                        : remainingOrders <= 0
-                                                            ? '오늘 주문 마감'
-                                                            : !orderTimeAvailable
-                                                                ? `주문 불가 시간 (${nextOrderTime})`
-                                                                : '주문하기'
-                                                }
-                                            </button>
-                                        </div>
-                                    )) || []}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <Suspense fallback={<div className="text-center py-8">메뉴 로딩 중...</div>}>
+                        <CoffeeMenu 
+                            coffees={coffees}
+                            coffeesLoading={coffeesLoading}
+                            remainingOrders={remainingOrders}
+                            orderTimeAvailable={orderTimeAvailable}
+                            nextOrderTime={nextOrderTime}
+                            onOrder={handleOrder}
+                            isCreatingOrder={isCreatingOrder}
+                        />
+                    </Suspense>
                 </div>
             </main>
         </div>

@@ -77,7 +77,7 @@ export function cleanupPendingRequests() {
   // 5분 이상 된 요청들은 강제로 정리
   const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
   
-  for (const [key, promise] of pendingRequests.entries()) {
+  for (const [key] of pendingRequests.entries()) {
     // 키에서 타임스탬프 추출
     const parts = key.split(':')
     if (parts.length >= 3) {
