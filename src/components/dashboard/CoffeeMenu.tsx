@@ -2,13 +2,12 @@
 
 import { Coffee } from '@/types/coffee'
 import { QUANTITY_RESTRICTIONS } from '@/lib/config/order-restrictions'
+import { OrderStatusInfo } from '@/lib/utils/order-status'
 
 interface CoffeeMenuProps {
   coffees: Coffee[] | undefined
   coffeesLoading: boolean
-  remainingOrders: number
-  orderTimeAvailable: boolean
-  nextOrderTime: string
+  orderStatus: OrderStatusInfo
   onOrder: (coffee: Coffee) => void
   isCreatingOrder?: boolean
 }
@@ -16,9 +15,7 @@ interface CoffeeMenuProps {
 export default function CoffeeMenu({ 
   coffees, 
   coffeesLoading, 
-  remainingOrders, 
-  orderTimeAvailable, 
-  nextOrderTime, 
+  orderStatus,
   onOrder,
   isCreatingOrder = false
 }: CoffeeMenuProps) {
@@ -44,8 +41,7 @@ export default function CoffeeMenu({
                     isCreatingOrder ||
                     !coffee.available || 
                     coffee.remainingGrams < QUANTITY_RESTRICTIONS.MIN_GRAMS_REQUIRED || 
-                    remainingOrders <= 0 || 
-                    !orderTimeAvailable
+                    orderStatus.orderButtonDisabled
                   }
                   className="mt-2 w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -55,11 +51,7 @@ export default function CoffeeMenu({
                     ? '품절'
                     : coffee.remainingGrams < QUANTITY_RESTRICTIONS.MIN_GRAMS_REQUIRED
                     ? '재고 부족'
-                    : remainingOrders <= 0
-                    ? '일일 주문 완료'
-                    : !orderTimeAvailable
-                    ? `주문 불가 시간 (${nextOrderTime})`
-                    : '주문하기'
+                    : orderStatus.orderButtonMessage
                   }
                 </button>
               </div>

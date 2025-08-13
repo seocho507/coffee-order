@@ -1,25 +1,20 @@
 'use client'
 
 import { DailyOrder } from '@/types/coffee'
-import { USER_MESSAGES, QUANTITY_RESTRICTIONS } from '@/lib/config/order-restrictions'
+import { USER_MESSAGES } from '@/lib/config/order-restrictions'
+import { OrderStatusInfo } from '@/lib/utils/order-status'
 
 interface OrderStatusProps {
   userOrders: DailyOrder[]
   allOrders: DailyOrder[]
-  isOrderTimeAvailable: boolean
-  nextOrderTime: string
+  orderStatus: OrderStatusInfo
 }
 
 export default function OrderStatus({ 
   userOrders, 
   allOrders, 
-  isOrderTimeAvailable, 
-  nextOrderTime 
+  orderStatus 
 }: OrderStatusProps) {
-  const userOrderCount = userOrders?.length || 0
-  const allOrderCount = allOrders?.length || 0
-  const remainingOrders = Math.max(0, QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT - userOrderCount)
-  const totalDailyLimit = QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT * 2
 
   return (
     <>
@@ -29,17 +24,20 @@ export default function OrderStatus({
           <h2 className="text-xl font-bold text-gray-900 mb-4">오늘의 전체 주문 현황</h2>
           <div className="text-sm text-gray-600 mb-4">
             <p className="text-orange-600 font-medium text-lg">
-              전체 주문: {allOrderCount}잔 / {totalDailyLimit}잔
+              전체 주문: {orderStatus.totalOrdersToday}잔 / 2잔 (오전: {orderStatus.morningOrders}잔, 오후: {orderStatus.afternoonOrders}잔)
             </p>
             <div className="mt-2 text-xs text-gray-500">
               {USER_MESSAGES.ORDER_RULES.map((rule, index) => (
                 <p key={index} className="text-lg mb-1">{rule}</p>
               ))}
-              {!isOrderTimeAvailable && nextOrderTime && (
-                <p className="text-orange-600 font-medium text-lg mt-4">
-                  현재 주문 불가 시간입니다. {nextOrderTime}에 다시 시도해주세요.
+              <div className="mt-4">
+                <p className={`font-medium text-lg ${orderStatus.morningAvailable ? 'text-green-600' : 'text-red-600'}`}>
+                  오전 주문: {orderStatus.morningAvailable ? '가능' : '마감'}
                 </p>
-              )}
+                <p className={`font-medium text-lg ${orderStatus.afternoonAvailable ? 'text-green-600' : 'text-red-600'}`}>
+                  오후 주문: {orderStatus.afternoonAvailable ? '가능' : '마감'}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -71,15 +69,11 @@ export default function OrderStatus({
         <div className="px-4 py-5 sm:p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">나의 주문 현황</h2>
           <div className="text-sm text-gray-600">
-            {(() => {
-              const orderInfo = USER_MESSAGES.ORDER_LIMIT_INFO(userOrderCount, remainingOrders)
-              return (
-                <>
-                  <p>{orderInfo.current}</p>
-                  <p>{orderInfo.remaining}</p>
-                </>
-              )
-            })()}
+            <p>오늘 내가 주문한 커피: {orderStatus.userOrderCount}잔</p>
+            <p>남은 주문 가능량: {orderStatus.userRemainingOrders}잔 (개인별 일일 1잔 제한)</p>
+            <p className={`mt-2 font-medium ${orderStatus.userCanOrder ? 'text-green-600' : 'text-red-600'}`}>
+              개인 주문 상태: {orderStatus.userCanOrder ? '주문 가능' : '주문 완료'}
+            </p>
           </div>
 
           {userOrders && userOrders.length > 0 && (

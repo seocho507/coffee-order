@@ -33,14 +33,14 @@ export class OrderService {
       throw new Error(reason!)
     }
 
-    // 일일 주문 제한 체크
+    // 일일 주문 제한 체크 (개인별)
     const todayOrders = await this.getUserOrdersForDate(userId, getTodayString())
     const dailyLimitValidation = validateDailyOrderLimit(todayOrders.length)
     if (!dailyLimitValidation.canOrder) {
       throw new Error(dailyLimitValidation.reason!)
     }
 
-    // 시간대별 주문 제한 체크
+    // 시간대별 주문 제한 체크 (전체)
     const timeslotOrders = await this.getTimeslotOrdersForDate(getTodayString(), timeSlot)
     const timeslotLimitValidation = validateTimeslotOrderLimit(timeslotOrders.length)
     if (!timeslotLimitValidation.canOrder) {

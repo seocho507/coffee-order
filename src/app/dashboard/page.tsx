@@ -6,13 +6,12 @@ import { useCoffees } from '@/hooks/useCoffees'
 import { useOrders } from '@/hooks/useOrders'
 import {
   getNextOrderTime,
-  isOrderTimeAvailable,
-  QUANTITY_RESTRICTIONS,
-  validateDailyOrderLimit
+  isOrderTimeAvailable
 } from '@/lib/config/order-restrictions'
 import { Coffee } from '@/types/coffee'
 import toast from 'react-hot-toast'
 import { Suspense, lazy, useMemo, useCallback } from 'react'
+import { calculateOrderStatus } from '@/lib/utils/order-status'
 
 // 컴포넌트들을 동적 import로 코드 분할
 const OrderStatus = lazy(() => import('@/components/dashboard/OrderStatus'))
@@ -36,20 +35,26 @@ export default function Dashboard() {
         refetch: refetchAllOrders
     } = useOrders(undefined, true)
 
+    // 주문 상태 계산 (메모이제이션으로 최적화)
+    const orderStatus = useMemo(() => {
+        const timeAvailable = isOrderTimeAvailable()
+        const nextTime = getNextOrderTime()
+        
+        return calculateOrderStatus(
+            userOrders || [],
+            allOrders || [],
+            timeAvailable,
+            nextTime
+        )
+    }, [userOrders, allOrders])
+
     // 주문 처리 함수 (메모이제이션)
     const handleOrder = useCallback(async (coffee: Coffee) => {
         if (!user) return
 
-        if (!isOrderTimeAvailable()) {
-            const nextTime = getNextOrderTime()
-            toast.error(`주문 가능한 시간이 아닙니다. ${nextTime}에 다시 시도해주세요.`)
-            return
-        }
-
-        const currentUserOrders = userOrders || []
-        const dailyLimitValidation = validateDailyOrderLimit(currentUserOrders.length)
-        if (!dailyLimitValidation.canOrder) {
-            toast.error(dailyLimitValidation.reason!)
+        // 주문 상태 재확인
+        if (orderStatus.orderButtonDisabled) {
+            toast.error(orderStatus.orderButtonMessage)
             return
         }
 
@@ -60,29 +65,13 @@ export default function Dashboard() {
             refetchAllOrders()
             refetchCoffees()
         }
-    }, [user, userOrders, createOrder, refetchOrders, refetchAllOrders, refetchCoffees])
+    }, [user, orderStatus, createOrder, refetchOrders, refetchAllOrders, refetchCoffees])
 
     // 로그아웃 처리 (메모이제이션)
     const handleLogout = useCallback(() => {
         signOut()
         router.push('/')
     }, [signOut, router])
-
-    // 계산된 값들 (메모이제이션으로 최적화)
-    const { remainingOrders, orderTimeAvailable, nextOrderTime } = useMemo(() => {
-        const timeAvailable = isOrderTimeAvailable()
-        const nextTime = getNextOrderTime()
-        
-        // 사용자의 일일 주문 잔여량 (개인당 1잔 제한)
-        const userCount = userOrders?.length || 0
-        const dailyRemaining = Math.max(0, QUANTITY_RESTRICTIONS.DAILY_ORDER_LIMIT - userCount)
-        
-        return {
-            remainingOrders: dailyRemaining,
-            orderTimeAvailable: timeAvailable,
-            nextOrderTime: nextTime
-        }
-    }, [userOrders])
 
     const isLoading = authLoading || coffeesLoading || ordersLoading || allOrdersLoading
 
@@ -139,8 +128,7 @@ export default function Dashboard() {
                         <OrderStatus 
                             userOrders={userOrders || []}
                             allOrders={allOrders || []}
-                            isOrderTimeAvailable={orderTimeAvailable}
-                            nextOrderTime={nextOrderTime}
+                            orderStatus={orderStatus}
                         />
                     </Suspense>
 
@@ -148,9 +136,7 @@ export default function Dashboard() {
                         <CoffeeMenu 
                             coffees={coffees}
                             coffeesLoading={coffeesLoading}
-                            remainingOrders={remainingOrders}
-                            orderTimeAvailable={orderTimeAvailable}
-                            nextOrderTime={nextOrderTime}
+                            orderStatus={orderStatus}
                             onOrder={handleOrder}
                             isCreatingOrder={isCreatingOrder}
                         />
